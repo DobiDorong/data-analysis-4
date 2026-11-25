@@ -308,16 +308,14 @@ for i in ("중간", "야간"):
     print(f"{i}:{len([row for row in rows if row[6] == i])}줄")
 
 # TODO ④ result 정상·이상으로도 나눠 찍으세요
-for i in sorted(set([row[7] for row in rows]), reverse=True):
-    picked = []
-    for row in rows:
-        if row[7] == i:
-            picked.append(row)
-    temps = []
-    for row in picked:
-        temps.append(float(row[1]))
-    print(i, "데이터:", stat(temps))
-
+print()
+result_avg = []
+result_count = []
+for i in ("정상", "이상"):
+    value = stat([float(row[1]) for row in rows if row[7] == i])
+    print(i, value)
+    result_avg.append(value["평균"])
+    result_count.append(value["개수"])
 # =====================================================================
 # 실습 5 — 라벨을 보지 않고 수상한 줄 찾기
 # =====================================================================
@@ -369,8 +367,18 @@ for k in (2, 3):
             f"측정시각 {row[0]:>4}  온도 {row[1]:>7}  평균과 차이 {round(float(row[1]) - avg, 2):>7}  result={row[7]}"
         )
 # TODO ③ 2배 초과 중 result 이상 건수와, 전체 이상의 몇 %인지 찍으세요
+far_2 = [row for row in rows if abs(float(row[1]) - avg) > 2 * spread]
+far_count = 0
+for row in far_2:
+    if row[7] == "이상":
+        far_count += 1
+print("2배 초과 중 result 이상 건 수:", far_count, "건")
 
-
+rows_count = 0
+for row in rows:
+    if row[7] == "이상":
+        rows_count += 1
+print(f"전체 이상의 {far_count/rows_count*100}%")
 # =====================================================================
 # 실습 6 — 두 열이 같이 움직이나
 # =====================================================================
@@ -414,9 +422,27 @@ print("=" * 60)
 print("[실습 6] 두 열이 같이 움직이나")
 
 # TODO ① (1존 온도, CP값) 짝을 만들어 온도 큰 순으로 세우고, 쌍 개수와 빠진 줄을 찍으세요
-# TODO ② 상위 5줄·하위 5줄과 각각의 CP값 평균을 찍으세요
-# TODO ③ 두 평균의 차이를 찍으세요
+temp_cp = []
+empty = 0
+for row in rows:
+    if row[3] != "":
+        temp_cp.append((float(row[1]), float(row[3])))
+    else:
+        empty += 1
+sort_temp_cp = sorted(temp_cp, reverse=True)
+print(f"쌍 개수: {len(sort_temp_cp)}개 빠진 줄 수: {empty}줄")
 
+# TODO ② 상위 5줄·하위 5줄과 각각의 CP값 평균을 찍으세요
+high = sort_temp_cp[:5]
+low = sort_temp_cp[-5:]
+high_CP = round(sum(t[1] for t in high) / 5, 3)
+low_CP = round(sum(t[1] for t in low) / 5, 3)
+print(
+    f"상위 5줄 {high}\n하위 5줄 {low}\n"
+    f"상위 5줄 CP값 평균 {high_CP} \n하위 5줄 CP값 평균 {low_CP}"
+)
+# TODO ③ 두 평균의 차이를 찍으세요
+print("두 평균의 차이:", round(high_CP - low_CP, 2))
 
 # =====================================================================
 # 실습 7 — 빈 칸이 섞인 열에서 평균 내기   ★오늘의 핵심
@@ -475,9 +501,43 @@ print("=" * 60)
 print("[실습 7] 빈 칸이 섞인 열에서 평균 내기")
 
 # TODO ① 그냥 평균을 내 보고, 터지는 오류를 try / except 로 받아 찍으세요
+# err = [float(row[4]) for row in rows]
+# err_avg = sum(err) / len(err)
+# print("평균", err_avg)
+try:
+    err = [float(row[4]) for row in rows]
+    err_avg = sum(err) / len(err)
+    print("평균", err_avg)
+except ValueError as e:
+    print("ValueError:", e)
+
 # TODO ② 빈 칸을 건너뛰고 평균을 내고, 개수와 평균을 같이 찍으세요
+CP = [float(row[4]) for row in rows if row[4] != ""]
+CP_avg = round(sum(CP) / len(CP), 2)
+print(f"빈 칸 제외 개수: {len(CP)}개  빈 칸 제외 평균: {CP_avg}")
+
 # TODO ③ 빈 칸을 0.0 으로 채우고 평균을 내고, 개수와 평균을 같이 찍으세요
+full = []
+for row in rows:
+    if row[4] == "":
+        full.append(0.0)
+    else:
+        full.append(float(row[4]))
+full_avg = round(sum(full) / len(full), 2)
+print(f"빈 칸 채운 후 개수: {len(full)}개   빈 칸을 채운 후 평균: {full_avg}")
+
 # TODO ④ 두 평균의 차이와 검산 두 줄을 찍으세요
+print(f"두 평균의 차이: {abs(CP_avg - full_avg)}")
+#        검산 1) 유효 개수 + 빈 칸 수 = 전체 행 수
+#        검산 2) ②의 평균 × 빈 칸 수 ÷ 전체 행 수 가 ④의 차이와 같은지
+blank = 0
+for row in rows:
+    if row[4] == "":
+        blank += 1
+print(f"검산 1) 유효 개수 + 빈 칸 수 = {len(CP)+blank}, 전체 행 수: {len(rows)}")
+print(
+    f"검산 2) 빈 칸 제외 평균 x 빈 칸 수 / 전체 행 수 = {round(CP_avg*blank/len(rows),2)}, 평균 차이: {abs(CP_avg - full_avg)}"
+)
 
 
 # =====================================================================
@@ -515,6 +575,24 @@ print("=" * 60)
 print("[실습 8] 세 줄 보고서")
 
 # TODO ①~⑤ 다섯 줄을 f-string 으로 찍으세요
-
+# 규칙은 셋입니다 — ★숫자를 적고 · 분모를 적고 · 한계를 적는다.
+#     ① 1존 온도의 평균과 흔들림을 ★건수와 함께 한 줄로
+#     ② 이상 그룹과 정상 그룹의 온도 평균을 ★각 건수와 함께 한 줄로
+#     ③ 그 숫자의 ★한계를 한 줄로 (표본이 몇 건인지)
+#     ④ OP값 평균을 ★어떻게 냈는지 한 줄로 (빈 칸을 어떻게 했는지)
+#     ⑤ ★모르는 것을 한 줄로
+print(f"1존 온도 {len(z1)}건의 평균: {round(avg,2)} 흔들림: {spread} 입니다.")
+print(
+    f"정상 그룹의 건 수와 1존 온도 평균: {result_count[0]}개, {result_avg[0]} / 이상 그룹의 건 수와 1존 온도 평균: {result_count[1]}개, {result_avg[1]}"
+)
+print(
+    f"이상 그룹의 건 수가 11개로 표본이 매우 적어 이상 그룹 평균의 안정성이 떨어지기 때문에 이를 기반으로 이상 징후를 평가하기 어렵다고 생각합니다."
+)
+print(
+    f"OP값의 빈 칸을 제외한 114칸으로 평균을 내고 그 후에 빈 칸을 0으로 채운 뒤 다시 평균을 내어 두 평균의 차이가 생김을 확인했습니다."
+)
+print(
+    f"OP값과 CP값이 무엇인지 확인하지 못하였고 각 데이터들의 관계를 파악하지 못하였습니다. 주어진 데이터에서 어떤 정보를 추출해서 이상 징후 판단에 사용해야 할지 모르겠습니다."
+)
 print("=" * 60)
 print("실습 8개 끝. 수고하셨습니다.")
